@@ -42,6 +42,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: write
+      id-token: write
     strategy:
       matrix:
         platform: [mac-arm64, mac-x64, linux-x64]
@@ -60,14 +61,14 @@ jobs:
           VERSION=${GITHUB_REF_NAME#v}
           npm version --no-git-tag-version "$VERSION" 2>/dev/null || true
           jq --arg n "@cometix/cscience-${PLATFORM}" '.name = $n' package.json > tmp.json && mv tmp.json package.json
-          npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          npm publish --access public --provenance
 
   publish-meta:
     needs: publish
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -76,25 +77,26 @@ jobs:
           registry-url: https://registry.npmjs.org
       - run: |
           VERSION=${GITHUB_REF_NAME#v}
-          mkdir -p /tmp/meta
-          cat > /tmp/meta/package.json << EOF
+          mkdir -p /tmp/meta/bin
+
+          cat > /tmp/meta/package.json << PKGJSON
           {
             "name": "@cometix/cscience",
-            "version": "$VERSION",
-            "description": "Claude Science BYOK - pick the right platform package automatically",
+            "version": "${VERSION}",
+            "description": "Claude Science BYOK",
             "bin": { "cscience": "./bin/cscience.mjs" },
             "optionalDependencies": {
-              "@cometix/cscience-mac-arm64": "$VERSION",
-              "@cometix/cscience-mac-x64": "$VERSION",
-              "@cometix/cscience-linux-x64": "$VERSION"
+              "@cometix/cscience-mac-arm64": "${VERSION}",
+              "@cometix/cscience-mac-x64": "${VERSION}",
+              "@cometix/cscience-linux-x64": "${VERSION}"
             },
             "os": ["darwin", "linux"],
             "keywords": ["claude", "science", "anthropic", "byok"],
             "license": "MIT"
           }
-          EOF
-          mkdir -p /tmp/meta/bin
-          cat > /tmp/meta/bin/cscience.mjs << 'SCRIPT'
+          PKGJSON
+
+          cat > /tmp/meta/bin/cscience.mjs << 'LAUNCHER'
           #!/usr/bin/env node
           import { platform, arch } from "os";
           import { createRequire } from "module";
@@ -103,8 +105,7 @@ jobs:
           const pkg = `@cometix/cscience-${key}`;
           try { const p = require.resolve(pkg + "/bin/claude-science.mjs"); await import(p); }
           catch { console.error(`Platform package ${pkg} not installed. Run: bun install -g ${pkg}`); process.exit(1); }
-          SCRIPT
+          LAUNCHER
+
           chmod +x /tmp/meta/bin/cscience.mjs
-          cd /tmp/meta && npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          cd /tmp/meta && npm publish --access public --provenance
