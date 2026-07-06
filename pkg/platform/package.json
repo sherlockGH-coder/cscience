@@ -1,0 +1,12 @@
+{
+  "name": "@cometix/cscience",
+  "version": "0.0.0-PLATFORM",
+  "description": "Claude Science BYOK - platform runtime",
+  "type": "module",
+  "license": "MIT",
+  "files": [
+    "bin/",
+    "runtime/",
+    "templates/"
+  ]
+}

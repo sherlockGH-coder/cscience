@@ -4,13 +4,6 @@ on:
   push:
     tags: ['v*.*.*']
   workflow_dispatch:
-    inputs:
-      platform:
-        description: 'Target platform'
-        required: false
-        default: 'all'
-        type: choice
-        options: [all, mac-arm64, mac-x64, linux-x64]
 
 concurrency:
   group: ${{ github.workflow }}
@@ -39,23 +32,20 @@ jobs:
       - run: npm ci
       - run: npm run build -- --platform ${{ matrix.platform }}
 
-      - name: Pack npm tarball
+      - name: Pack platform tarball
         run: |
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
           PLATFORM="${{ matrix.platform }}"
-          PKG_DIR="dist/pkg-${PLATFORM}"
-
-          cd "$PKG_DIR"
-          npm version --no-git-tag-version "${VERSION}" 2>/dev/null || true
-          jq --arg n "@cometix/cscience-${PLATFORM}" '.name = $n' package.json > tmp.json && mv tmp.json package.json
+          cd "dist/pkg-${PLATFORM}"
+          npm version --no-git-tag-version "${VERSION}-${PLATFORM}" 2>/dev/null || true
           npm pack
-          mv *.tgz "${GITHUB_WORKSPACE}/cscience-${PLATFORM}-${VERSION}.tgz"
+          mv *.tgz "${GITHUB_WORKSPACE}/cscience-npm-${PLATFORM}-${VERSION}.tgz"
 
       - uses: actions/upload-artifact@v4
         with:
           name: npm-${{ matrix.platform }}
-          path: cscience-*.tgz
+          path: cscience-npm-*.tgz
 
   publish:
     name: Publish to npm
@@ -81,52 +71,40 @@ jobs:
       - name: List tarballs
         run: ls -la dist/npm/
 
-      - name: Publish platform packages
+      - name: Publish platform packages (dist-tagged)
         run: |
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
-          for tgz in dist/npm/cscience-*-"${VERSION}".tgz; do
+          for tgz in dist/npm/cscience-npm-*-"${VERSION}".tgz; do
             [ -f "$tgz" ] || continue
-            echo "Publishing: $tgz"
-            npm publish "$tgz" --access public --provenance
+            basename="$(basename "$tgz" .tgz)"
+            platform="${basename#cscience-npm-}"
+            platform="${platform%-"${VERSION}"}"
+            echo "Publishing platform: ${platform} (tag: ${platform})"
+            npm publish "$tgz" --tag "${platform}" --access public --provenance
           done
 
-      - name: Publish meta package
+      - name: Publish main package
         run: |
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
 
-          mkdir -p /tmp/meta/bin
-          cat > /tmp/meta/package.json << PKGJSON
-          {
-            "name": "@cometix/cscience",
-            "version": "${VERSION}",
-            "description": "Claude Science BYOK",
-            "bin": { "cscience": "./bin/cscience.mjs" },
-            "optionalDependencies": {
-              "@cometix/cscience-mac-arm64": "${VERSION}",
-              "@cometix/cscience-mac-x64": "${VERSION}",
-              "@cometix/cscience-linux-x64": "${VERSION}"
-            },
-            "os": ["darwin", "linux"],
-            "keywords": ["claude", "science", "anthropic", "byok"],
-            "license": "MIT"
-          }
-          PKGJSON
+          PKG_DIR="$(mktemp -d)"
+          cp -r pkg/main/* "${PKG_DIR}/"
 
-          cat > /tmp/meta/bin/cscience.mjs << 'LAUNCHER'
-          #!/usr/bin/env node
-          import { platform, arch } from "os";
-          import { createRequire } from "module";
-          const require = createRequire(import.meta.url);
-          const key = platform() === "darwin" ? (arch() === "arm64" ? "mac-arm64" : "mac-x64") : "linux-x64";
-          const pkg = `@cometix/cscience-${key}`;
-          try { const p = require.resolve(pkg + "/bin/claude-science.mjs"); await import(p); }
-          catch { console.error(`Platform package ${pkg} not installed. Run: bun install -g ${pkg}`); process.exit(1); }
-          LAUNCHER
+          cd "${PKG_DIR}"
+          jq --arg v "${VERSION}" '
+            .version = $v |
+            .optionalDependencies = {
+              "@cometix/cscience-mac-arm64": ("npm:@cometix/cscience@" + $v + "-mac-arm64"),
+              "@cometix/cscience-mac-x64":   ("npm:@cometix/cscience@" + $v + "-mac-x64"),
+              "@cometix/cscience-linux-x64":  ("npm:@cometix/cscience@" + $v + "-linux-x64")
+            }
+          ' package.json > tmp.json && mv tmp.json package.json
 
-          chmod +x /tmp/meta/bin/cscience.mjs
-          cd /tmp/meta && npm publish --access public --provenance
+          cat package.json
+          chmod +x bin/cscience.mjs
+          npm publish --access public --provenance
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

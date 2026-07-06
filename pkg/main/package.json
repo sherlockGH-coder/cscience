@@ -1,0 +1,16 @@
+{
+  "name": "@cometix/cscience",
+  "version": "0.0.0",
+  "description": "Claude Science BYOK (Bring Your Own Key)",
+  "type": "module",
+  "bin": {
+    "cscience": "./bin/cscience.mjs"
+  },
+  "optionalDependencies": {
+    "@cometix/cscience-mac-arm64": "npm:@cometix/cscience@0.0.0-mac-arm64",
+    "@cometix/cscience-mac-x64": "npm:@cometix/cscience@0.0.0-mac-x64",
+    "@cometix/cscience-linux-x64": "npm:@cometix/cscience@0.0.0-linux-x64"
+  },
+  "keywords": ["claude", "science", "anthropic", "byok"],
+  "license": "MIT"
+}
