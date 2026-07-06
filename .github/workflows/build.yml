@@ -2,7 +2,7 @@ name: Build & Publish
 
 on:
   push:
-    tags: ['v*']
+    tags: ['v*.*.*']
   workflow_dispatch:
     inputs:
       platform:
@@ -12,9 +12,15 @@ on:
         type: choice
         options: [all, mac-arm64, mac-x64, linux-x64]
 
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
 jobs:
   build:
+    name: Build - ${{ matrix.platform }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - platform: mac-arm64
@@ -24,6 +30,7 @@ jobs:
           - platform: linux-x64
             os: ubuntu-latest
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -31,43 +38,32 @@ jobs:
           node-version: 22
       - run: npm ci
       - run: npm run build -- --platform ${{ matrix.platform }}
+
+      - name: Pack npm tarball
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          PLATFORM="${{ matrix.platform }}"
+          PKG_DIR="dist/pkg-${PLATFORM}"
+
+          cd "$PKG_DIR"
+          npm version --no-git-tag-version "${VERSION}" 2>/dev/null || true
+          jq --arg n "@cometix/cscience-${PLATFORM}" '.name = $n' package.json > tmp.json && mv tmp.json package.json
+          npm pack
+          mv *.tgz "${GITHUB_WORKSPACE}/cscience-${PLATFORM}-${VERSION}.tgz"
+
       - uses: actions/upload-artifact@v4
         with:
-          name: pkg-${{ matrix.platform }}
-          path: dist/pkg-${{ matrix.platform }}/
+          name: npm-${{ matrix.platform }}
+          path: cscience-*.tgz
 
   publish:
+    name: Publish to npm
     needs: build
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: write
-      id-token: write
-    strategy:
-      matrix:
-        platform: [mac-arm64, mac-x64, linux-x64]
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: pkg-${{ matrix.platform }}
-          path: pkg/
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          registry-url: https://registry.npmjs.org
-      - run: |
-          cd pkg
-          PLATFORM=${{ matrix.platform }}
-          VERSION=${GITHUB_REF_NAME#v}
-          npm version --no-git-tag-version "$VERSION" 2>/dev/null || true
-          jq --arg n "@cometix/cscience-${PLATFORM}" '.name = $n' package.json > tmp.json && mv tmp.json package.json
-          npm publish --access public --provenance
-
-  publish-meta:
-    needs: publish
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
-    permissions:
       id-token: write
     steps:
       - uses: actions/checkout@v4
@@ -75,10 +71,32 @@ jobs:
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
-      - run: |
-          VERSION=${GITHUB_REF_NAME#v}
-          mkdir -p /tmp/meta/bin
+          scope: '@cometix'
 
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist/npm
+          merge-multiple: true
+
+      - name: List tarballs
+        run: ls -la dist/npm/
+
+      - name: Publish platform packages
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          for tgz in dist/npm/cscience-*-"${VERSION}".tgz; do
+            [ -f "$tgz" ] || continue
+            echo "Publishing: $tgz"
+            npm publish "$tgz" --access public --provenance
+          done
+
+      - name: Publish meta package
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+
+          mkdir -p /tmp/meta/bin
           cat > /tmp/meta/package.json << PKGJSON
           {
             "name": "@cometix/cscience",
@@ -109,3 +127,10 @@ jobs:
 
           chmod +x /tmp/meta/bin/cscience.mjs
           cd /tmp/meta && npm publish --access public --provenance
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          files: dist/npm/*.tgz
+          generate_release_notes: true
