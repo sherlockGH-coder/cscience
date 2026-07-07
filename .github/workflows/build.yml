@@ -38,6 +38,7 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           PLATFORM="${{ matrix.platform }}"
           cd "dist/pkg-${PLATFORM}"
+          cp "${GITHUB_WORKSPACE}/README.md" .
           npm version --no-git-tag-version "${VERSION}-${PLATFORM}" 2>/dev/null || true
           npm pack
           mv *.tgz "${GITHUB_WORKSPACE}/cscience-npm-${PLATFORM}-${VERSION}.tgz"
@@ -93,6 +94,7 @@ jobs:
           cp -r pkg/main/* "${PKG_DIR}/"
 
           cd "${PKG_DIR}"
+          cp "${GITHUB_WORKSPACE}/README.md" .
           jq --arg v "${VERSION}" '
             .version = $v |
             .optionalDependencies = {

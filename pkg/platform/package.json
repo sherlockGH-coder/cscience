@@ -4,9 +4,14 @@
   "description": "Claude Science BYOK - platform runtime",
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Haleclipse/cscience"
+  },
   "files": [
     "bin/",
     "runtime/",
-    "templates/"
+    "templates/",
+    "README.md"
   ]
 }
