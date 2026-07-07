@@ -123,7 +123,7 @@ function parseModules(offsets, bunData) {
 const WORKER_SYMLINKS = [
   { target: 'sqliteWorkerEntry.ts', linkTo: 'sqliteWorkerEntry.js' },
   { target: 'orgsImportWorker.ts',  linkTo: 'orgsImportWorker.js' },
-  { target: 'sandbox/gitScanWorker.ts', linkTo: 'gitScanWorker.js' },
+  { target: 'sandbox/gitScanWorker.ts', linkTo: 'sandbox/gitScanWorker.js' },
 ];
 
 export async function unpack(binaryPath, outputDir) {
