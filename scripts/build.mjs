@@ -51,10 +51,10 @@ async function buildPlatform(platformKey) {
   } catch {}
 
   const outPkg = JSON.parse(readFileSync(join(pkgDir, 'package.json'), 'utf8'));
-  outPkg.name = `@cometix/cscience-${platformKey}`;
+  // keep name as @cometix/cscience — all platforms share one package via dist-tags
   outPkg.description = `Claude Science BYOK - platform runtime (${platformKey})`;
   const upstreamVersion = detectUpstreamVersion(join(pkgDir, 'runtime'));
-  if (upstreamVersion) outPkg.version = upstreamVersion;
+  if (upstreamVersion) outPkg.version = `${upstreamVersion}-${platformKey}`;
   writeFileSync(join(pkgDir, 'package.json'), JSON.stringify(outPkg, null, 2) + '\n');
 
   console.log(`\n  Output: ${pkgDir}`);
