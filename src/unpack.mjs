@@ -1,4 +1,4 @@
-import { readFile, mkdir, writeFile, symlink, stat } from 'node:fs/promises';
+import { readFile, mkdir, writeFile, copyFile, stat } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -168,11 +168,11 @@ export async function unpack(binaryPath, outputDir) {
   }
 
   for (const { target, linkTo } of WORKER_SYMLINKS) {
-    const linkPath = join(outputDir, target);
-    try { await stat(linkPath); } catch {
-      await mkdir(dirname(linkPath), { recursive: true });
-      await symlink(linkTo, linkPath);
-      console.log(`  [link] ${target} -> ${linkTo}`);
+    const destPath = join(outputDir, target);
+    try { await stat(destPath); } catch {
+      await mkdir(dirname(destPath), { recursive: true });
+      await copyFile(join(outputDir, linkTo), destPath);
+      console.log(`  [copy] ${target} <- ${linkTo}`);
     }
   }
 
