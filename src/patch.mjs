@@ -63,6 +63,16 @@ export async function patch(dir, opts = {}) {
     }
   });
 
+  const requiredMissing = PATCHES
+    .filter(
+      (patchDefinition) =>
+        patchDefinition.required && stats[patchDefinition.id] === 'NOT_FOUND',
+    )
+    .map((patchDefinition) => patchDefinition.id);
+  if (requiredMissing.length > 0) {
+    throw Error(`[patch] Required patch(es) did not match: ${requiredMissing.join(', ')}`);
+  }
+
   const toApply = replacements.filter(r => stats[r.id] === 'MATCHED');
   let code = raw;
   if (toApply.length > 0) {
@@ -104,5 +114,14 @@ export async function patch(dir, opts = {}) {
 
   if (missing > 0) console.warn(`[patch] WARNING: ${missing} patch(es) did not match.`);
 
-  return { applied, skipped, missing, changed, hashBefore, hashAfter, stats };
+  return {
+    applied,
+    skipped,
+    missing,
+    requiredMissing,
+    changed,
+    hashBefore,
+    hashAfter,
+    stats,
+  };
 }

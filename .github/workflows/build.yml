@@ -1,12 +1,14 @@
 name: Build & Publish
 
 on:
+  pull_request:
+    branches: [master]
   push:
     tags: ['v*.*.*']
   workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -29,17 +31,21 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.1.0'
       - run: npm ci
+      - run: npm run test:all
       - run: npm run build -- --platform ${{ matrix.platform }}
 
       - name: Pack platform tarball
         run: |
           set -euo pipefail
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="$(node "${GITHUB_WORKSPACE}/scripts/ci-version.mjs")"
           PLATFORM="${{ matrix.platform }}"
           cd "dist/pkg-${PLATFORM}"
           cp "${GITHUB_WORKSPACE}/README.md" .
-          npm version --no-git-tag-version "${VERSION}-${PLATFORM}" 2>/dev/null || true
+          npm version --no-git-tag-version "${VERSION}-${PLATFORM}"
           npm pack
           mv *.tgz "${GITHUB_WORKSPACE}/cscience-npm-${PLATFORM}-${VERSION}.tgz"
 
@@ -75,7 +81,7 @@ jobs:
       - name: Publish platform packages (dist-tagged)
         run: |
           set -euo pipefail
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="$(node "${GITHUB_WORKSPACE}/scripts/ci-version.mjs")"
           for tgz in dist/npm/cscience-npm-*-"${VERSION}".tgz; do
             [ -f "$tgz" ] || continue
             basename="$(basename "$tgz" .tgz)"
@@ -88,7 +94,7 @@ jobs:
       - name: Publish main package
         run: |
           set -euo pipefail
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="$(node "${GITHUB_WORKSPACE}/scripts/ci-version.mjs")"
 
           PKG_DIR="$(mktemp -d)"
           cp -r pkg/main/* "${PKG_DIR}/"

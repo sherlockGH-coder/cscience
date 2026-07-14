@@ -343,4 +343,29 @@ export const PATCHES = [
       return valSrc.includes('.default(!1)');
     },
   },
+  {
+    id: 'P14',
+    required: true,
+    name: 'custom-model-name-filter-disable',
+    description: 'Keep custom provider models whose display names look like slugs',
+    match(node) {
+      if (node.type !== 'FunctionDeclaration') return false;
+      if (node.params.length !== 1) return false;
+      return hasRegexLiteral(node, 'Extended_Pictographic') &&
+             hasRegexLiteral(node, '^[a-z][a-z0-9]*(?:-[a-z0-9]+)+$');
+    },
+    replace(node) {
+      const name = node.id?.name ?? '_';
+      const param = node.params[0]?.name ?? 'z';
+      return {
+        start: node.start,
+        end: node.end,
+        code: `function ${name}(${param}){return/* cscience:P14 */!1}`,
+      };
+    },
+    matchApplied(node, _parent, code) {
+      if (node.type !== 'FunctionDeclaration' || node.params.length !== 1) return false;
+      return code.slice(node.start, node.end).includes('cscience:P14');
+    },
+  },
 ];
