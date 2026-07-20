@@ -252,13 +252,11 @@ export const PATCHES = [
     replace(node) {
       const name = node.id?.name ?? '_';
       const param = node.params[0]?.name ?? 'z';
-      return { start: node.start, end: node.end, code: `function ${name}(${param}){return!1}` };
+      return { start: node.start, end: node.end, code: `function ${name}(${param}){return/* cscience:P9 */!1}` };
     },
-    matchApplied(node, parent, code) {
-      if (node.type !== 'FunctionDeclaration') return false;
-      if (node.params.length !== 1) return false;
-      const src = code.slice(node.start, node.end);
-      return src.includes('return!1') && !src.includes('^claude-');
+    matchApplied(node, _parent, code) {
+      if (node.type !== 'FunctionDeclaration' || node.params.length !== 1) return false;
+      return code.slice(node.start, node.end).includes('cscience:P9');
     },
   },
   {
@@ -273,13 +271,11 @@ export const PATCHES = [
     replace(node) {
       const name = node.id?.name ?? '_';
       const param = node.params[0]?.name ?? 'z';
-      return { start: node.start, end: node.end, code: `function ${name}(${param}){return!1}` };
+      return { start: node.start, end: node.end, code: `function ${name}(${param}){return/* cscience:P10 */!1}` };
     },
-    matchApplied(node, parent, code) {
-      if (node.type !== 'FunctionDeclaration') return false;
-      if (node.params.length !== 1) return false;
-      const src = code.slice(node.start, node.end);
-      return src.includes('return!1') && !src.includes('fable');
+    matchApplied(node, _parent, code) {
+      if (node.type !== 'FunctionDeclaration' || node.params.length !== 1) return false;
+      return code.slice(node.start, node.end).includes('cscience:P10');
     },
   },
   {

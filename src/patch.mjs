@@ -84,6 +84,22 @@ export async function patch(dir, opts = {}) {
     for (const r of toApply) stats[r.id] = 'APPLIED';
   }
 
+  // Post-patch: replace hardcoded internal model tiers with runtime env overrides.
+  // Only replaces value positions (not object keys like "claude-haiku-...":200000).
+  const MODEL_OVERRIDES = [
+    { id: 'claude-haiku-4-5-20251001', env: 'BYOK_SMALL_MODEL', label: 'small' },
+    { id: 'claude-sonnet-4-5-20250929', env: 'BYOK_MEDIUM_MODEL', label: 'medium' },
+    { id: 'claude-opus-4-8', env: 'BYOK_LARGE_MODEL', label: 'large' },
+  ];
+  for (const { id, env, label } of MODEL_OVERRIDES) {
+    const pattern = new RegExp(`"${id}"(?!:)`, 'g');
+    const count = (code.match(pattern) || []).length;
+    if (count > 0) {
+      code = code.replace(pattern, `(process.env.${env}||"${id}")`);
+      console.log(`[patch] Replaced ${count} internal ${label}-model reference(s) with ${env} override`);
+    }
+  }
+
   console.log('[patch] Validating patched code...');
   try {
     acorn.parse(code, { ecmaVersion: 'latest', sourceType: 'module' });

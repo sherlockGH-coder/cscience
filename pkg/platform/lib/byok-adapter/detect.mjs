@@ -46,6 +46,10 @@ export function canFallbackProtocol(error, options = {}) {
   if (!error) return false;
   if (error.allowProtocolFallback === true) return true;
   if (error.kind === ERROR_KINDS.UNSUPPORTED_ENDPOINT) return true;
+  // Non-standard relays may drop the connection instead of returning 404/405
+  // for unsupported endpoints. If no response headers were received, treat a
+  // network-level failure as "endpoint likely unsupported" and allow fallback.
+  if (error.kind === ERROR_KINDS.NETWORK) return true;
   return false;
 }
 

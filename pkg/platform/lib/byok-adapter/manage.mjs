@@ -52,6 +52,8 @@ const ADAPTER_CONFIG_ENV_KEYS = [
   'BYOK_REASONING_EFFORT',
   'BYOK_DEBUG',
   'BYOK_LOCAL_TOKEN',
+  'HTTPS_PROXY',
+  'HTTP_PROXY',
 ];
 
 export function isAdapterDisabled(env = process.env) {
@@ -162,6 +164,8 @@ async function ensureAdapterLocked(userConfig, options, statePath) {
     BYOK_DEBUG: userConfig.BYOK_DEBUG || '0',
     ANTHROPIC_VERSION: userConfig.ANTHROPIC_VERSION || '',
     BYOK_LOCAL_TOKEN: localToken,
+    HTTPS_PROXY: userConfig.HTTPS_PROXY || '',
+    HTTP_PROXY: userConfig.HTTP_PROXY || '',
   };
 
   // Validate config early so launcher fails before spawning.

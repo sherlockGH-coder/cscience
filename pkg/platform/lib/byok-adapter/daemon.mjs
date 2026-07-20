@@ -4,9 +4,11 @@ import { createAdapterServer } from './server.mjs';
 import { createLogger } from './log.mjs';
 
 async function main() {
+  let rawConfig;
   let config;
   try {
-    config = buildAdapterConfig(await readConfigFromStdin());
+    rawConfig = await readConfigFromStdin();
+    config = buildAdapterConfig(rawConfig);
   } catch (error) {
     writeReadyError(error);
     process.exit(1);
@@ -18,7 +20,13 @@ async function main() {
     error: (line) => console.error(line),
   };
   const logger = createLogger({ debug: config.byok.debug, output: stderrOutput });
-  const adapter = createAdapterServer(config, { logger });
+
+  const proxyUrl = rawConfig.HTTPS_PROXY || rawConfig.HTTP_PROXY || '';
+  const fetchImpl = proxyUrl
+    ? await createProxyFetch(proxyUrl, logger)
+    : globalThis.fetch;
+
+  const adapter = createAdapterServer(config, { logger, fetchImpl });
 
   let shuttingDown = false;
   const shutdown = async (signal) => {
@@ -49,6 +57,29 @@ async function main() {
   } catch (error) {
     writeReadyError(error);
     process.exit(1);
+  }
+}
+
+async function createProxyFetch(proxyUrl, logger) {
+  // Bun's fetch respects proxy env vars natively.
+  if (typeof Bun !== 'undefined') {
+    process.env.HTTPS_PROXY = proxyUrl;
+    process.env.HTTP_PROXY = proxyUrl;
+    logger.info(`outbound proxy (bun native): ${proxyUrl}`);
+    return globalThis.fetch;
+  }
+  // Node.js: use undici ProxyAgent as fetch dispatcher.
+  try {
+    const { ProxyAgent } = await import('undici');
+    const dispatcher = new ProxyAgent(proxyUrl);
+    logger.info(`outbound proxy: ${proxyUrl}`);
+    return (url, options = {}) => fetch(url, { ...options, dispatcher });
+  } catch {
+    // undici not available; set env vars as best-effort fallback.
+    process.env.HTTPS_PROXY = proxyUrl;
+    process.env.HTTP_PROXY = proxyUrl;
+    logger.warn(`undici unavailable; proxy set via env only (may not work): ${proxyUrl}`);
+    return globalThis.fetch;
   }
 }
 
