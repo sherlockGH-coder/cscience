@@ -53,8 +53,9 @@ export function hasRegexLiteral(node, patternSubstr) {
 export function findEnclosingFunction(node, code, nodeStart) {
   let result = null;
   walk(node, (n) => {
-    if (n.type === 'FunctionDeclaration' && n.start <= nodeStart && n.end >= nodeStart)
-      result = n;
+    if (n.type === 'FunctionDeclaration' && n.start <= nodeStart && n.end >= nodeStart) {
+      if (!result || n.start > result.start) result = n;
+    }
   });
   return result;
 }

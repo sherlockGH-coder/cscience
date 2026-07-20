@@ -40,9 +40,11 @@ export async function patch(dir, opts = {}) {
 
   for (const p of PATCHES) {
     if (stats[p.id] !== 'NOT_FOUND') continue;
+    if ('_target' in p) p._target = null;
     if (p.preScan) p.preScan(ast);
   }
 
+  const debug = opts.debug || process.env.BYOK_DEBUG === '1';
   console.log('[patch] Scanning AST for patch targets...');
   walk(ast, (node, parent) => {
     for (const p of PATCHES) {
@@ -59,7 +61,9 @@ export async function patch(dir, opts = {}) {
             stats[p.id] = 'MATCHED';
           }
         }
-      } catch {}
+      } catch (e) {
+        if (debug) console.warn(`[patch] ${p.id} match error: ${e.message}`);
+      }
     }
   });
 

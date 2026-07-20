@@ -133,6 +133,9 @@ export async function unpack(binaryPath, outputDir) {
 
   const { prefixSize, offsets, bunData } = parseBunData(content);
   const { version, structSize, modules } = parseModules(offsets, bunData);
+  if (offsets.entryPointId >= modules.length) {
+    throw Error(`Entry point #${offsets.entryPointId} out of range (${modules.length} modules)`);
+  }
   console.log(`[unpack] Module struct: ${version} (${structSize}B/entry), ${modules.length} modules`);
   console.log(`[unpack] Entry point: #${offsets.entryPointId} -> ${modules[offsets.entryPointId]?.name ?? '?'}`);
 

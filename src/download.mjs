@@ -1,8 +1,21 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, existsSync, copyFileSync, chmodSync } from 'node:fs';
+import { mkdirSync, existsSync, copyFileSync, chmodSync, readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { getPlatformConfig } from './util/platform.mjs';
 import { extractFromDmg } from './util/dmg.mjs';
+
+function verifySha256(filePath, expected) {
+  if (!expected) return;
+  const actual = createHash('sha256').update(readFileSync(filePath)).digest('hex');
+  if (actual !== expected) {
+    throw Error(
+      `[download] SHA-256 mismatch!\n  expected: ${expected}\n  actual:   ${actual}\n` +
+      `The downloaded binary may be corrupted or tampered with. Aborting.`
+    );
+  }
+  console.log(`[download] SHA-256 verified: ${actual.slice(0, 16)}...`);
+}
 
 export async function download(platformKey, outputDir) {
   const cfg = getPlatformConfig(platformKey);
@@ -12,6 +25,7 @@ export async function download(platformKey, outputDir) {
   const binaryDest = join(cacheDir, 'claude-science');
   if (existsSync(binaryDest)) {
     console.log(`[download] Cached binary found: ${binaryDest}`);
+    verifySha256(binaryDest, cfg.sha256);
     return binaryDest;
   }
 
@@ -41,5 +55,6 @@ export async function download(platformKey, outputDir) {
     console.log(`[download] Binary saved: ${binaryDest}`);
   }
 
+  verifySha256(binaryDest, cfg.sha256);
   return binaryDest;
 }

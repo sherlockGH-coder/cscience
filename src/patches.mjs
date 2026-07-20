@@ -254,7 +254,12 @@ export const PATCHES = [
       const param = node.params[0]?.name ?? 'z';
       return { start: node.start, end: node.end, code: `function ${name}(${param}){return!1}` };
     },
-    matchApplied: null,
+    matchApplied(node, parent, code) {
+      if (node.type !== 'FunctionDeclaration') return false;
+      if (node.params.length !== 1) return false;
+      const src = code.slice(node.start, node.end);
+      return src.includes('return!1') && !src.includes('^claude-');
+    },
   },
   {
     id: 'P10',
@@ -270,7 +275,12 @@ export const PATCHES = [
       const param = node.params[0]?.name ?? 'z';
       return { start: node.start, end: node.end, code: `function ${name}(${param}){return!1}` };
     },
-    matchApplied: null,
+    matchApplied(node, parent, code) {
+      if (node.type !== 'FunctionDeclaration') return false;
+      if (node.params.length !== 1) return false;
+      const src = code.slice(node.start, node.end);
+      return src.includes('return!1') && !src.includes('fable');
+    },
   },
   {
     id: 'P11',
@@ -316,7 +326,11 @@ export const PATCHES = [
     replace(node) {
       return { start: node.start, end: node.end, code: '{}' };
     },
-    matchApplied: null,
+    matchApplied(node, parent, code) {
+      if (node.type !== 'IfStatement') return false;
+      const src = code.slice(node.start, node.end);
+      return src === '{}';
+    },
   },
   {
     id: 'P13',

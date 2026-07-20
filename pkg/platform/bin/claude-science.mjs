@@ -1,9 +1,9 @@
 #!/usr/bin/env bun
-import { resolve, dirname, join } from 'path';
-import { fileURLToPath } from 'url';
-import { existsSync, readFileSync, mkdirSync, writeFileSync, copyFileSync } from 'fs';
-import { homedir, tmpdir } from 'os';
-import { spawn, execFileSync } from 'child_process';
+import { resolve, dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { existsSync, readFileSync, mkdirSync, writeFileSync, copyFileSync } from 'node:fs';
+import { homedir, tmpdir } from 'node:os';
+import { spawn, execFileSync } from 'node:child_process';
 import {
   buildManagementRuntimeEnv,
   buildRuntimeEnv,

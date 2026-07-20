@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 export class AnthropicSseWriter {
   constructor(response, options = {}) {
     this.response = response;
@@ -6,7 +8,7 @@ export class AnthropicSseWriter {
     this.openBlocks = new Set();
     this.messageStarted = false;
     this.messageStopped = false;
-    this.messageId = options.messageId || `msg_${randomId()}`;
+    this.messageId = options.messageId || `msg_${randomUUID()}`;
     this.model = options.model || 'unknown';
   }
 
@@ -190,8 +192,4 @@ function contentBlockToAnthropic(block) {
     };
   }
   return block;
-}
-
-function randomId() {
-  return Math.random().toString(36).slice(2, 12);
 }

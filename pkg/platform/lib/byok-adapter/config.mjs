@@ -74,9 +74,7 @@ export function normalizeBaseUrl(rawUrl) {
   parsed.pathname = pathname;
 
   return {
-    href: parsed.href.endsWith('/') && parsed.pathname === '/'
-      ? parsed.origin + '/'
-      : parsed.origin + (pathname === '/' ? '' : pathname) + (pathname === '/' ? '/' : ''),
+    href: `${parsed.origin}${pathname === '/' ? '/' : pathname}`,
     origin: parsed.origin,
     protocol: parsed.protocol,
     hostname: parsed.hostname,

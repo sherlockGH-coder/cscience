@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import { resolve, join } from 'node:path';
-import { cpSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
+import { cpSync, writeFileSync, readFileSync, existsSync, rmSync, readdirSync } from 'node:fs';
 import { detectPlatform, listPlatforms, getPlatformConfig } from '../src/util/platform.mjs';
 import { download } from '../src/download.mjs';
 import { unpack } from '../src/unpack.mjs';
@@ -46,8 +45,9 @@ async function buildPlatform(platformKey) {
   const cacheDir = join(distDir, '.cache');
   if (existsSync(cacheDir)) rmSync(cacheDir, { recursive: true, force: true });
   try {
-    const tars = execFileSync('sh', ['-c', `ls ${join(pkgDir, 'runtime', 'assets.tar-*.gz')} 2>/dev/null`], { encoding: 'utf8' }).trim().split('\n');
-    for (const f of tars) if (f) rmSync(f);
+    const assetsDir = join(pkgDir, 'runtime');
+    const tars = readdirSync(assetsDir).filter(f => /^assets\.tar-.*\.gz$/.test(f));
+    for (const f of tars) rmSync(join(assetsDir, f));
   } catch {}
 
   const outPkg = JSON.parse(readFileSync(join(pkgDir, 'package.json'), 'utf8'));
